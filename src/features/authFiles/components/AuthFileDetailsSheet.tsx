@@ -21,6 +21,12 @@ import { MAX_CREDENTIAL_WEIGHT } from '@/utils/credentialWeight';
 import { AuthFileExcludedModelsField } from './AuthFileExcludedModelsField';
 import { AuthFilePolicyFields } from './AuthFilePolicyFields';
 import { credentialPolicyError, readCredentialPolicy } from '../credentialPolicy';
+import {
+  isUsageCapTextValid,
+  readUsageCapsDraft,
+  supportsAuthFileUsageCaps,
+  usageCapsDraftError,
+} from '../usageCaps';
 import styles from './AuthFileDetailsSheet.module.scss';
 
 /** API 边界归一化补写的派生字段——INFO 视图里只展示后端原始形状，避免重复噪音。 */
@@ -157,7 +163,8 @@ export function AuthFileDetailsSheet(props: AuthFileDetailsSheetProps) {
               !editor?.json ||
               Boolean(editor?.headersTouched && editor.headersError) ||
               Boolean(editor?.weightError) ||
-              Boolean(credentialPolicyError(editor?.policy))
+              Boolean(credentialPolicyError(editor?.policy)) ||
+              usageCapsDraftError(editor?.usageCaps)
             }
           >
             {t('common.save')}
@@ -239,6 +246,40 @@ export function AuthFileDetailsSheet(props: AuthFileDetailsSheetProps) {
                     disabled={disableControls || editor.saving || !editor.json}
                     onChange={(e) => onChange('weight', e.target.value)}
                   />
+                  {supportsAuthFileUsageCaps(editor.providerKey) && (
+                    <>
+                      {(
+                        [
+                          ['usageCap5h', 'fiveHour', 'auth_files.usage_cap_5h_label'],
+                          ['usageCap7d', 'sevenDay', 'auth_files.usage_cap_7d_label'],
+                        ] as const
+                      ).map(([field, window, labelKey]) => {
+                        const value = (editor.usageCaps ?? readUsageCapsDraft(editor.json ?? {}))[
+                          window
+                        ];
+                        return (
+                          <Input
+                            key={field}
+                            label={t(labelKey)}
+                            type="number"
+                            step="1"
+                            min={1}
+                            max={100}
+                            value={value}
+                            placeholder={t('auth_files.usage_cap_placeholder')}
+                            hint={t('auth_files.usage_cap_hint')}
+                            error={
+                              isUsageCapTextValid(value)
+                                ? undefined
+                                : t('auth_files.usage_cap_invalid')
+                            }
+                            disabled={disableControls || editor.saving || !editor.json}
+                            onChange={(e) => onChange(field, e.target.value)}
+                          />
+                        );
+                      })}
+                    </>
+                  )}
                   <div className="form-group">
                     <label>{t('auth_files.disable_cooling_label')}</label>
                     <ToggleSwitch

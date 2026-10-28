@@ -27,6 +27,16 @@ import {
   supportsAuthFileUsingApi,
 } from '@/features/authFiles/constants';
 import {
+  applyUsageCapsPatch,
+  buildUsageCapsPatch,
+  readUsageCapsDraft,
+  supportsAuthFileUsageCaps,
+  USAGE_CAP_EDITOR_FIELDS,
+  usageCapsDraftError,
+  type UsageCapField,
+  type UsageCapsDraft,
+} from '@/features/authFiles/usageCaps';
+import {
   parseCredentialWeightText,
   readCredentialWeight,
   validateCredentialWeightText,
@@ -45,6 +55,7 @@ type AuthFileEditorErrorKey = AuthFileHeadersErrorKey | AuthFileWeightErrorKey;
 
 export type PrefixProxyEditorField =
   | CredentialPolicyField
+  | UsageCapField
   | 'prefix'
   | 'proxyUrl'
   | 'priority'
@@ -61,6 +72,7 @@ export type PrefixProxyEditorFieldValue = string | boolean | CredentialPolicyVal
 
 export type PrefixProxyEditorState = {
   policy?: CredentialPolicyDraft;
+  usageCaps?: UsageCapsDraft;
   fileName: string;
   fileInfoText: string;
   loading: boolean;
@@ -400,6 +412,9 @@ export const buildAuthFileFieldsPatch = (
   }
 
   Object.assign(patch, buildCredentialPolicyPatch(original, editor.policy));
+  if (supportsAuthFileUsageCaps(editor.providerKey)) {
+    Object.assign(patch, buildUsageCapsPatch(original, editor.usageCaps));
+  }
   return patch;
 };
 
@@ -464,6 +479,7 @@ const buildPrefixProxyUpdatedText = (
   }
 
   applyCredentialPolicyPatch(next, patch);
+  applyUsageCapsPatch(next, patch);
   applyHeadersPatch(next, patch.headers);
 
   if (patch.websockets !== undefined) {
@@ -495,7 +511,8 @@ export function useAuthFilesPrefixProxyEditor(
   const hasBlockingValidationError = Boolean(
     (prefixProxyEditor?.headersTouched && prefixProxyEditor.headersError) ||
     prefixProxyEditor?.weightError ||
-    credentialPolicyError(prefixProxyEditor?.policy)
+    credentialPolicyError(prefixProxyEditor?.policy) ||
+    usageCapsDraftError(prefixProxyEditor?.usageCaps)
   );
   const prefixProxyUpdatedText =
     prefixProxyEditor && !hasBlockingValidationError
@@ -628,6 +645,7 @@ export function useAuthFilesPrefixProxyEditor(
           invalidContentPreview: '',
           json,
           policy: readCredentialPolicy(json),
+          usageCaps: readUsageCapsDraft(json),
           providerKey,
           prefix,
           proxyUrl,
@@ -678,6 +696,13 @@ export function useAuthFilesPrefixProxyEditor(
             [field]: value,
             touched: { ...policy.touched, [field]: true },
           },
+        };
+      }
+      if (field === 'usageCap5h' || field === 'usageCap7d') {
+        const usageCaps = prev.usageCaps ?? readUsageCapsDraft(prev.json ?? {});
+        return {
+          ...prev,
+          usageCaps: { ...usageCaps, [USAGE_CAP_EDITOR_FIELDS[field]]: String(value) },
         };
       }
       if (field === 'prefix') return { ...prev, prefix: String(value) };

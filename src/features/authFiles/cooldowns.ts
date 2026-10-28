@@ -3,6 +3,7 @@ import type { AuthFileCooldown, AuthFileCooldownSnapshot } from '@/types/authFil
 const REASON_KEYS: Record<string, string> = {
   quota: 'auth_files.cooldown_reason_quota',
   credential_quota: 'auth_files.cooldown_reason_credential_quota',
+  usage_cap: 'auth_files.cooldown_reason_usage_cap',
   cloudflare_challenge: 'auth_files.cooldown_reason_cloudflare_challenge',
   invalid_grant: 'auth_files.cooldown_reason_invalid_grant',
   unauthorized: 'auth_files.cooldown_reason_unauthorized',
